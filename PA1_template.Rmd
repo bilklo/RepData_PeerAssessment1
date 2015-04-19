@@ -5,21 +5,147 @@ output:
     keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
+```{r load_data, }
+        library(ggplot2)
+        data <-read.csv('./activity.csv')
+        #clean data
+        data_1 <- na.omit(data)
+```
+###Histogram
+Plot a histogram to see the number of steps that appears more oftern per day.
+```{r plot_histogram, }
+        ggplot(data_1, aes(x=steps, fill=date)) + 
+                geom_histogram(binwidth=80) +
+                ggtitle("Total number of steps taken each day")+
+                scale_fill_grey()
 
+```
 
-
+Code to generate the mean and median of the data
+```{r, mean_median_total_Steps, results="asis"}
+        library(xtable)
+        #split the data frame
+        split_data <- split(data_1, data_1$date)
+        #total number of steps per day
+        sum_step=sapply(1:61, function(x) sum(unlist(split_data[[x]][1])))
+        #find summary of the steps per day
+        size<-length(split_data)
+        new_data <- data.frame(Id=1:61,
+                        median=sapply(1:61, function(x) median(unlist(split_data[[x]][1]))), 
+                        mean=sapply(1:61, function(x) mean(unlist(split_data[[x]][1]))))
+        xt<-xtable(new_data)
+        print(xt,type="html")
+```
 ## What is mean total number of steps taken per day?
+```{r, steps_mean_total, results="asis"}
+split_data <- split(data$steps,data$date)
+        new_data <- as.data.frame(split_data)
+        #find the avereage accross all days
+        step_mean<-rowMeans(new_data,na.rm = TRUE)
+        #set interval
+        split_interval <- split(data$interval,data$date)
+        df <- data.frame(interval=split_interval[[1]], means_step=step_mean)
 
-
+        #find the max avg step
+        max_mean_step <- sort(df$means_step, decreasing=TRUE)[1]
+        #Print the max
+        question_2<-df[df$means_step==max_mean_step,]
+        xt<-xtable(question_2)
+        print(xt,type="html")
+```
 
 ## What is the average daily activity pattern?
-
-
-
+The next graph shows the average daily activity pattern
+```{r, time_series_avg_steps}
+        ggplot( data = df, aes( means_step, interval )) + 
+                geom_line() +
+                ggtitle("Time Series of steps (Avg per month )")+
+                xlab("Time Series - Month") +
+                ylab("Average of steps") 
+```
 ## Imputing missing values
+Find the missing values
+```{r, find_missing_values}
+na_data<- apply(data, 1, function(x){any(is.na(x))})
+        na_data<-data[na_data,]
+```
 
+Generate new data frame for the NA values. Replace the values with the mean of the interval.
+```{r, generate_new_data_frame_na}
+split_intevals <- split(data$interval,data$date)
+        dfM <- data.frame(step_mean,interval=split_intevals[1])
+        update_values <- function(step,interval) if(is.na(step)) { step=dfM[dfM$X2012.10.01==interval,][1,1] }else{ step }
+        new_df <-data
+        new_df$steps <- mapply(update_values,new_df$steps,new_df$interval)
+```
 
+Generate new histogram plot
+```{r plot_histogram_without_na }
+        ggplot(new_df, aes(x=steps, fill=date)) + 
+                geom_histogram(binwidth=80) +
+                ggtitle("Total number of steps taken each day without NAs")+
+                scale_fill_grey()
+```
 
+Generate mean and median
+```{r, mean_median_without_na, results="asis"}
+
+        #split the data frame
+        split_data_na <- split(new_df, new_df$date)
+        #total number of steps per day
+        sum_step=sapply(1:61, function(x) sum(unlist(split_data_na[[x]][1])))
+        #find summary of the steps per day
+        new_data_na <- data.frame(Id=1:61,
+                        median=sapply(1:61, function(x) median(unlist(split_data_na[[x]][1]))), 
+                        mean=sapply(1:61, function(x) mean(unlist(split_data_na[[x]][1]))))
+        xt<-xtable(new_data_na)
+        print(xt,type="html")
+```
 ## Are there differences in activity patterns between weekdays and weekends?
+Create the factors
+```{r, create_Factors, results="asis"}
+df_last<-data
+        df_last$day <- weekdays(as.Date(df_last$date))
+        v_weekdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", 
+                        "Friday")
+        
+        v_weekend <- c("Saturday","Sunday")
+        
+        df_weekdays <- df_last[df_last$day %in% v_weekdays ,]
+        df_weekend <- df_last[df_last$day %in% v_weekend ,]
+        
+        #split the data for week days
+        split_data <- split(df_weekdays$steps,df_weekdays$day)
+        new_data <- as.data.frame(split_data)
+        #find the avereage accross all days
+        step_mean<-rowMeans(new_data,na.rm = TRUE)
+        #set interval
+        split_interval <- split(df_weekdays$interval,df_weekdays$date)
+        df1 <- data.frame(interval=split_interval[[1]], means_step=step_mean)
+        
+        #find the max avg step
+        max_mean_step <- sort(df1$means_step, decreasing=TRUE)[1]
+        #Print the max
+        df1[df1$means_step==max_mean_step,]
+        
+        split_data <- split(df_weekend$steps,df_weekend$day)
+        new_data <- as.data.frame(split_data)
+        step_mean<-rowMeans(new_data,na.rm = TRUE)
+        df2 <- data.frame(interval=split_interval[[1]], means_step=step_mean)
+```
+Plot the data
+```{r, plot_facotrs, fig.keep ='all' }
+        #plot
+        ggplot( data = df2, aes( means_step, interval )) + 
+                geom_line() +
+                ggtitle("Weekend")+
+                xlab("Time Series - Month") +
+                ylab("Average of steps") 
+        
+        ggplot( data = df1, aes( means_step, interval )) + 
+                geom_line() +
+                ggtitle("Week")+
+                xlab("Time Series - Month") +
+                ylab("Average of steps")   
+```
